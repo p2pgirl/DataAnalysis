@@ -220,7 +220,7 @@ else:
 
 # <a id='cities'></a>
 # ### Testing for wrong entries in "city"
-# All information should show the city to be Bend.  I found one incorrect entry.  I fixed it when I fixed the address types in "Testing for inconsistent entries in Street Name - Part 2"
+# All information should show the city to be Bend.  I found one incorrect entry.  
 
 # In[5]:
 
@@ -273,7 +273,7 @@ street_type_re = re.compile(r'\b\S+\.?$', re.IGNORECASE)
 
 
 expected = ["Street", "Avenue", "Boulevard", "Drive", "Court", "Place", "Square", "Lane", "Road", 
-            "Trail", "Parkway", "Commons", "97", "20", "Loop", "Way", "Alley"]
+            "Trail", "Parkway", "Commons", "97", "20", "Loop", "Way", "Alley", "Highway"]
 
 # mapping used to update the street types
 mapping = { "St": "Street",
@@ -354,10 +354,9 @@ for st_type, ways in st_types.iteritems():
 
 #open file, and fix directional street names so it's consistent.
 # and while we're add it, let's fix that one broken city too...
-def audit_street_compass(osmfile):
-    osm_file = open(osmfile, "r")
-
-    for event, elem in ET.iterparse(osm_file, events=("start",)):
+def audit_street_compass(elem):
+    #osm_file = open(osmfile, "r")
+    #for event, elem in ET.iterparse(osm_file, events=("start",)):
 
         if elem.tag == "node" or elem.tag == "way":
             for tag in elem.iter("tag"):
@@ -378,11 +377,14 @@ def audit_street_compass(osmfile):
                         print ("Old city name: ", city_name)
                         city_name = city_name.replace('ch', 'Bend')
                         print ("New city name: ", city_name)
-    osm_file.close()
+    
 
 
 #start here, run audit_street_compass
-audit_street_compass(OSM_FILE)
+osm_file = open(OSM_FILE, "r")
+for event, elem in ET.iterparse(osm_file, events=("start",)):
+    audit_street_compass(elem)
+osm_file.close()
 
 
 # <a id='overview'></a>
@@ -460,7 +462,7 @@ schema = {
 }
 
 
-# In[9]:
+# In[10]:
 
 
 import csv
@@ -470,6 +472,7 @@ import cerberus
 
 
 OSM_PATH = OSM_FILE
+#OSM_PATH = SAMPLE_FILE
 
 NODES_PATH = "nodes.csv"
 NODE_TAGS_PATH = "nodes_tags.csv"
@@ -497,7 +500,18 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
     way_attribs = {}
     way_nodes = []
     tags = []  # Handle secondary tags the same way for both node and way elements
-
+    
+    #MOD: UPDATE the address street types
+    if element.tag == "node" or element.tag == "way":
+            for tag in element.iter("tag"):
+                if is_street_name(tag):
+                    name = tag.attrib['v']
+                    update_name(name, mapping)
+    
+    #MOD: UPDATE the address street directions
+    audit_street_compass(element)
+    
+    
     # Creates all the needed dictionaries and lists to export them to csvs
     if element.tag == 'node':
         for node_key in node_attr_fields:
@@ -661,7 +675,7 @@ if __name__ == '__main__':
 # <p style="color:red; font-size:12pt"><b>Number of Nodes and Ways<b><p>
 # The below gets some general statisticts about how many "nodes" is in this dataset, as well as how many "ways"
 
-# In[10]:
+# In[11]:
 
 
 import sqlite3
@@ -783,7 +797,7 @@ print(df)
 # <p style="color:red; font-size:12pt"><b>Tourism<b><p>
 # Trying to find places to go.
 
-# In[19]:
+# In[16]:
 
 
 QUERY = '''
